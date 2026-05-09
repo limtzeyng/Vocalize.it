@@ -17,7 +17,7 @@ const therapyCards = [
   {
     icon: Play,
     title: "Start Therapy",
-    description: "Continue S-sound practice",
+    description: "Continue practice",
     gradient: "from-teal-500 to-blue-500",
     href: "/patient/practice",
   },

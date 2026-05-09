@@ -20,10 +20,10 @@ export default function Home() {
 
         <div className="mt-8 flex flex-wrap gap-3">
           <Link
-            href="/patient/practice"
+            href="/patient"
             className="rounded-xl bg-black px-5 py-3 text-sm font-medium text-white transition hover:bg-gray-800"
           >
-            Start Patient Practice
+            Patient Details
           </Link>
 
           <Link
