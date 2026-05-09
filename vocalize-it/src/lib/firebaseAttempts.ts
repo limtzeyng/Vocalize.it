@@ -1,4 +1,4 @@
-import { addDoc, collection, serverTimestamp } from "firebase/firestore";
+import { addDoc, collection, serverTimestamp, query, where, getDocs } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import type { PronunciationFeedback } from "@/types/practice";
 
@@ -21,4 +21,24 @@ export async function createPracticeAttempt(input: CreatePracticeAttemptInput) {
   });
 
   return docRef.id;
+}
+
+export async function getPracticeAttemptsForPatient(patientId: string) {
+  try {
+    const q = query(
+      collection(db, "practiceAttempts"),
+      where("patientId", "==", patientId)
+    );
+    
+    const querySnapshot = await getDocs(q);
+    const attempts = querySnapshot.docs.map((doc) => ({
+      id: doc.id,
+      ...doc.data(),
+    }));
+    
+    return attempts;
+  } catch (error) {
+    console.error("Error fetching practice attempts:", error);
+    return [];
+  }
 }

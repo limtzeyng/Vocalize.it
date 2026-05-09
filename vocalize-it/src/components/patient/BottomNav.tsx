@@ -1,53 +1,65 @@
 import Link from "next/link";
+import { Home, Mic, Camera, TrendingUp, Settings } from "lucide-react";
 
 type BottomNavProps = {
-  active: "practice" | "progress" | "caregiver";
+  active: "home" | "practice" | "ar" | "analytics" | "settings";
 };
 
-const navItems: {
-  href: string;
-  label: string;
-  value: BottomNavProps["active"];
-}[] = [
+const navItems = [
   {
-    href: "/patient/practice",
+    id: "home",
+    label: "Home",
+    href: "/patient",
+    icon: Home,
+  },
+  {
+    id: "practice",
     label: "Practice",
-    value: "practice",
+    href: "/patient/practice",
+    icon: Mic,
   },
   {
-    href: "/patient/progress",
+    id: "ar",
+    label: "AR Mode",
+    href: "/patient/ar",
+    icon: Camera,
+  },
+  {
+    id: "analytics",
     label: "Progress",
-    value: "progress",
+    href: "/patient/analytics",
+    icon: TrendingUp,
   },
   {
+    id: "settings",
+    label: "Settings",
     href: "/patient/caregiver",
-    label: "Caregiver",
-    value: "caregiver",
+    icon: Settings,
   },
-];
+] as const;
 
 export default function BottomNav({ active }: BottomNavProps) {
   return (
-    <nav className="fixed bottom-0 left-0 right-0 border-t bg-white px-4 py-3">
-      <div className="mx-auto flex max-w-md justify-around">
-        {navItems.map((item) => {
-          const selected = item.value === active;
+    <nav className="sticky bottom-0 z-50 grid grid-cols-5 border-t border-gray-200 bg-white px-2 py-2">
+      {navItems.map((item) => {
+        const Icon = item.icon;
+        const isActive = item.id === active;
 
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={`rounded-xl px-4 py-2 text-sm font-medium transition ${
-                selected
-                  ? "bg-black text-white"
-                  : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
-              }`}
-            >
-              {item.label}
-            </Link>
-          );
-        })}
-      </div>
+        return (
+          <Link
+            key={item.id}
+            href={item.href}
+            className={`flex flex-col items-center justify-center gap-1 rounded-xl px-2 py-1 text-xs transition ${
+              isActive
+                ? "text-teal-600"
+                : "text-gray-400 hover:text-gray-700"
+            }`}
+          >
+            <Icon className="h-5 w-5" strokeWidth={2} />
+            <span>{item.label}</span>
+          </Link>
+        );
+      })}
     </nav>
   );
 }
