@@ -1,3 +1,5 @@
+"use client";
+
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { User, Heart, Stethoscope, Activity } from 'lucide-react';
