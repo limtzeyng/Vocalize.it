@@ -34,4 +34,16 @@ Clone the repository and install the necessary dependencies:
 git clone <your-repo-url>
 cd vocalize-it
 npm install
-npm run dev
+npm run dev```
+
+### 3. Environment (.env file)
+# Google AI
+GOOGLE_GENERATIVE_AI_API_KEY=your_gemini_api_key
+
+# Firebase Configuration
+NEXT_PUBLIC_FIREBASE_API_KEY=your_api_key
+NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=your_project.firebaseapp.com
+NEXT_PUBLIC_FIREBASE_PROJECT_ID=your_project_id
+NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=your_project.appspot.com
+NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
+NEXT_PUBLIC_FIREBASE_APP_ID=your_app_id
