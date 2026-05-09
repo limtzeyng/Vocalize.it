@@ -32,6 +32,13 @@ export default function Home() {
           >
             Therapist Dashboard
           </Link>
+
+          <Link
+            href="/therapist/assign"
+            className="rounded-xl border bg-white px-5 py-3 text-sm font-medium text-gray-900 transition hover:bg-gray-50"
+          >
+            Create Assignment
+          </Link>
         </div>
       </section>
     </main>

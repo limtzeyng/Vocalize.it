@@ -1,51 +1,70 @@
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import PatientProgressTable from "@/components/therapist/PatientProgressTable";
-import type { TherapistPatient } from "@/types/therapist";
-
-const mockPatients: TherapistPatient[] = [
-  {
-    id: "patient-001",
-    name: "Avery Tan",
-    email: "avery@example.com",
-    targetSounds: ["s"],
-    lastPractisedAt: "Today, 10:24 AM",
-    averageAccuracy: 84,
-  },
-  {
-    id: "patient-002",
-    name: "Jamie Lee",
-    email: "jamie@example.com",
-    targetSounds: ["p", "b"],
-    lastPractisedAt: "Yesterday, 6:12 PM",
-    averageAccuracy: 72,
-  },
-  {
-    id: "patient-003",
-    name: "Nur Aisyah",
-    email: "aisyah@example.com",
-    targetSounds: ["k", "g"],
-    lastPractisedAt: "Not yet",
-    averageAccuracy: 0,
-  },
-];
+import {
+  getFirebaseDashboardPatients,
+  type DashboardPatient,
+} from "@/lib/firebaseDashboard";
 
 export default function TherapistDashboardPage() {
-  const totalPatients = mockPatients.length;
+  const [patients, setPatients] = useState<DashboardPatient[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState("");
 
-  const activeToday = mockPatients.filter((patient) =>
-    patient.lastPractisedAt?.toLowerCase().includes("today")
-  ).length;
+  async function loadDashboard() {
+    try {
+      setIsLoading(true);
+      setError("");
 
-  const averageAccuracy = Math.round(
-    mockPatients.reduce(
-      (sum, patient) => sum + (patient.averageAccuracy ?? 0),
-      0
-    ) / totalPatients
-  );
+      const firebasePatients = await getFirebaseDashboardPatients();
+      setPatients(firebasePatients);
+    } catch (err) {
+      console.error(err);
+      setError("Failed to load Firebase dashboard data.");
+    } finally {
+      setIsLoading(false);
+    }
+  }
 
-  const needsReview = mockPatients.filter(
-    (patient) => (patient.averageAccuracy ?? 0) < 60
-  ).length;
+  useEffect(() => {
+    loadDashboard();
+  }, []);
+
+  const totalPatients = patients.length;
+
+  const activeToday = useMemo(() => {
+    return patients.filter((patient) =>
+      patient.lastPractisedAt?.toLowerCase().includes("today")
+    ).length;
+  }, [patients]);
+
+  const averageAccuracy = useMemo(() => {
+    const patientsWithAttempts = patients.filter(
+      (patient) => patient.totalAttempts > 0
+    );
+
+    if (patientsWithAttempts.length === 0) return 0;
+
+    return Math.round(
+      patientsWithAttempts.reduce(
+        (sum, patient) => sum + (patient.averageAccuracy ?? 0),
+        0
+      ) / patientsWithAttempts.length
+    );
+  }, [patients]);
+
+  const needsReview = useMemo(() => {
+    return patients.filter(
+      (patient) =>
+        patient.totalAttempts > 0 && (patient.averageAccuracy ?? 0) < 60
+    ).length;
+  }, [patients]);
+
+  const totalAttempts = useMemo(() => {
+    return patients.reduce((sum, patient) => sum + patient.totalAttempts, 0);
+  }, [patients]);
 
   return (
     <main className="min-h-screen bg-gray-50 px-5 py-8">
@@ -66,26 +85,42 @@ export default function TherapistDashboardPage() {
             </p>
           </div>
 
-          <Link
-            href="/"
-            className="rounded-xl border bg-white px-4 py-2 text-sm font-medium text-gray-900 transition hover:bg-gray-50"
-          >
-            Back Home
-          </Link>
+          <div className="flex flex-wrap gap-3">
+            <button
+              type="button"
+              onClick={loadDashboard}
+              className="rounded-xl border bg-white px-4 py-2 text-sm font-medium text-gray-900 transition hover:bg-gray-50"
+            >
+              Refresh
+            </button>
+
+            <Link
+              href="/"
+              className="rounded-xl border bg-white px-4 py-2 text-sm font-medium text-gray-900 transition hover:bg-gray-50"
+            >
+              Back Home
+            </Link>
+          </div>
         </header>
+
+        {error && (
+          <div className="mb-6 rounded-2xl bg-red-50 p-4 text-sm text-red-700">
+            {error}
+          </div>
+        )}
 
         <section className="mb-6 grid gap-4 md:grid-cols-4">
           <div className="rounded-2xl border bg-white p-5 shadow-sm">
             <p className="text-sm font-medium text-gray-500">Patients</p>
             <p className="mt-2 text-3xl font-bold text-gray-950">
-              {totalPatients}
+              {isLoading ? "..." : totalPatients}
             </p>
           </div>
 
           <div className="rounded-2xl border bg-white p-5 shadow-sm">
             <p className="text-sm font-medium text-gray-500">Active Today</p>
             <p className="mt-2 text-3xl font-bold text-gray-950">
-              {activeToday}
+              {isLoading ? "..." : activeToday}
             </p>
           </div>
 
@@ -94,19 +129,27 @@ export default function TherapistDashboardPage() {
               Average Accuracy
             </p>
             <p className="mt-2 text-3xl font-bold text-gray-950">
-              {averageAccuracy}%
+              {isLoading ? "..." : `${averageAccuracy}%`}
             </p>
           </div>
 
           <div className="rounded-2xl border bg-white p-5 shadow-sm">
-            <p className="text-sm font-medium text-gray-500">Needs Review</p>
+            <p className="text-sm font-medium text-gray-500">Total Attempts</p>
             <p className="mt-2 text-3xl font-bold text-gray-950">
-              {needsReview}
+              {isLoading ? "..." : totalAttempts}
             </p>
           </div>
         </section>
 
-        <PatientProgressTable patients={mockPatients} />
+        {isLoading ? (
+          <section className="rounded-2xl border bg-white p-6 shadow-sm">
+            <p className="text-sm font-medium text-gray-500">
+              Loading Firebase data...
+            </p>
+          </section>
+        ) : (
+          <PatientProgressTable patients={patients} />
+        )}
 
         <section className="mt-6 grid gap-4 md:grid-cols-3">
           <div className="rounded-2xl border bg-white p-5 shadow-sm">
@@ -121,13 +164,13 @@ export default function TherapistDashboardPage() {
           </div>
 
           <div className="rounded-2xl border bg-white p-5 shadow-sm">
-            <p className="text-sm font-medium text-gray-500">MVP Demo Note</p>
+            <p className="text-sm font-medium text-gray-500">Firebase Status</p>
             <h2 className="mt-2 text-lg font-bold text-gray-900">
-              Mock data for now
+              Connected dashboard
             </h2>
             <p className="mt-2 text-sm text-gray-600">
-              This dashboard currently uses sample patients. Later, it can read
-              from Supabase or Firebase.
+              This dashboard now reads assignments and practice attempts from
+              Firestore.
             </p>
           </div>
 

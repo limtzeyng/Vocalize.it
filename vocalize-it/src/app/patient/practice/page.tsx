@@ -1,21 +1,29 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import AudioRecorder from "@/components/practice/AudioRecorder";
 import CameraPreview from "@/components/practice/CameraPreview";
 import FeedbackCard from "@/components/practice/FeedbackCard";
 import MouthGuide from "@/components/practice/MouthGuide";
 import RepetitionCounter from "@/components/practice/RepetitionCounter";
 import { mockAssignment } from "@/data/practiceBank";
+import { createPracticeAttempt } from "@/lib/firebaseAttempts";
+import { getAssignmentsForPatient } from "@/lib/firebaseAssignments";
 import { isAttemptSuccessful } from "@/lib/scoring";
 import { practiceLevelLabels } from "@/lib/therapyLevels";
 import type {
   ObjectPracticeResult,
   PracticeItem,
   PronunciationFeedback,
+  TherapyAssignment,
 } from "@/types/practice";
 
+const DEMO_PATIENT_ID = "patient-001";
+
 export default function PracticePage() {
+  const [assignment, setAssignment] =
+    useState<TherapyAssignment>(mockAssignment);
+
   const [selectedItemId, setSelectedItemId] = useState(
     mockAssignment.items[0]?.id
   );
@@ -26,20 +34,76 @@ export default function PracticePage() {
   const [objectPracticeResult, setObjectPracticeResult] =
     useState<ObjectPracticeResult | null>(null);
 
+  const [isLoadingAssignment, setIsLoadingAssignment] = useState(true);
+  const [assignmentSource, setAssignmentSource] = useState<"firebase" | "mock">(
+    "mock"
+  );
+
+  useEffect(() => {
+    async function loadAssignment() {
+      try {
+        const firebaseAssignments =
+          await getAssignmentsForPatient(DEMO_PATIENT_ID);
+
+        if (firebaseAssignments.length > 0) {
+          const latestAssignment = firebaseAssignments[0];
+
+          setAssignment(latestAssignment);
+          setSelectedItemId(latestAssignment.items[0]?.id);
+          setAssignmentSource("firebase");
+        } else {
+          setAssignment(mockAssignment);
+          setSelectedItemId(mockAssignment.items[0]?.id);
+          setAssignmentSource("mock");
+        }
+      } catch (error) {
+        console.error("Failed to load Firebase assignment:", error);
+
+        setAssignment(mockAssignment);
+        setSelectedItemId(mockAssignment.items[0]?.id);
+        setAssignmentSource("mock");
+      } finally {
+        setIsLoadingAssignment(false);
+      }
+    }
+
+    loadAssignment();
+  }, []);
+
   const selectedItem = useMemo<PracticeItem>(() => {
     return (
-      mockAssignment.items.find((item) => item.id === selectedItemId) ||
-      mockAssignment.items[0]
+      assignment.items.find((item) => item.id === selectedItemId) ||
+      assignment.items[0]
     );
-  }, [selectedItemId]);
+  }, [assignment, selectedItemId]);
 
-  function handleFeedback(newFeedback: PronunciationFeedback) {
+  async function handleFeedback(newFeedback: PronunciationFeedback) {
     setFeedback(newFeedback);
 
-    if (isAttemptSuccessful(newFeedback)) {
+    const successful = isAttemptSuccessful(newFeedback);
+
+    if (successful) {
       setCorrectCount((current) =>
-        Math.min(current + 1, mockAssignment.requiredCorrectRepetitions)
+        Math.min(current + 1, assignment.requiredCorrectRepetitions)
       );
+    }
+
+    try {
+      const attemptId = await createPracticeAttempt({
+        patientId: DEMO_PATIENT_ID,
+        assignmentId: assignment.id,
+        itemId: selectedItem.id,
+        expectedResponse: selectedItem.expectedResponse,
+        targetSound: selectedItem.targetSound,
+        practiceLevel: selectedItem.level,
+        feedback: newFeedback,
+        isCorrect: successful,
+        accuracyScore: newFeedback.accuracyScore,
+      });
+
+      console.log("Practice attempt saved:", attemptId);
+    } catch (error) {
+      console.error("Failed to save practice attempt:", error);
     }
   }
 
@@ -53,6 +117,24 @@ export default function PracticePage() {
     setObjectPracticeResult(result);
   }
 
+  if (isLoadingAssignment) {
+    return (
+      <main className="min-h-screen bg-gray-50 px-5 py-8">
+        <div className="mx-auto max-w-6xl">
+          <p className="text-sm font-medium uppercase tracking-wide text-gray-500">
+            Vocalize.it Patient Practice
+          </p>
+          <h1 className="mt-2 text-4xl font-bold tracking-tight text-gray-950">
+            Loading assignment...
+          </h1>
+          <p className="mt-3 text-gray-600">
+            Preparing your practice session.
+          </p>
+        </div>
+      </main>
+    );
+  }
+
   return (
     <main className="min-h-screen bg-gray-50 px-5 py-8">
       <div className="mx-auto max-w-6xl">
@@ -60,12 +142,18 @@ export default function PracticePage() {
           <p className="text-sm font-medium uppercase tracking-wide text-gray-500">
             Vocalize.it Patient Practice
           </p>
+
           <h1 className="mt-2 text-4xl font-bold tracking-tight text-gray-950">
-            {mockAssignment.title}
+            {assignment.title}
           </h1>
+
           <p className="mt-3 max-w-2xl text-gray-600">
             Practise your assigned sound at home. Record your attempt and get
             AI-assisted feedback to help guide your next try.
+          </p>
+
+          <p className="mt-3 inline-flex rounded-full bg-white px-3 py-1 text-xs font-medium text-gray-600">
+            Assignment source: {assignmentSource}
           </p>
         </header>
 
@@ -77,9 +165,11 @@ export default function PracticePage() {
                   <p className="text-sm font-medium text-gray-500">
                     Current Prompt
                   </p>
+
                   <h2 className="mt-2 text-5xl font-bold text-gray-950">
                     {selectedItem.expectedResponse}
                   </h2>
+
                   <p className="mt-3 text-lg text-gray-700">
                     {selectedItem.promptText}
                   </p>
@@ -111,14 +201,14 @@ export default function PracticePage() {
               feedback={feedback}
               isLoading={isLoadingFeedback}
               correctCount={correctCount}
-              requiredCount={mockAssignment.requiredCorrectRepetitions}
+              requiredCount={assignment.requiredCorrectRepetitions}
             />
           </section>
 
           <aside className="space-y-6">
             <RepetitionCounter
               correctCount={correctCount}
-              requiredCount={mockAssignment.requiredCorrectRepetitions}
+              requiredCount={assignment.requiredCorrectRepetitions}
             />
 
             <MouthGuide
@@ -130,8 +220,9 @@ export default function PracticePage() {
               <p className="text-sm font-medium text-gray-500">
                 Practice List
               </p>
+
               <div className="mt-4 space-y-2">
-                {mockAssignment.items.map((item) => {
+                {assignment.items.map((item) => {
                   const selected = item.id === selectedItem.id;
 
                   return (
@@ -149,6 +240,7 @@ export default function PracticePage() {
                         <span className="font-medium">
                           {item.expectedResponse}
                         </span>
+
                         <span
                           className={`text-xs ${
                             selected ? "text-gray-200" : "text-gray-500"
@@ -173,12 +265,14 @@ export default function PracticePage() {
               <p className="text-sm font-medium text-gray-500">
                 AR-inspired Practice Prompt
               </p>
+
               <h2 className="mt-2 text-2xl font-bold text-gray-900">
                 Say: “{objectPracticeResult.phrase}”
               </h2>
+
               <p className="mt-2 text-gray-600">
                 This connects speech practice to real objects around the
-                patient’s home.
+                patient&apos;s home.
               </p>
             </div>
           )}

@@ -86,7 +86,13 @@ export default function AudioRecorder({
       });
 
       if (!response.ok) {
-        throw new Error("Failed to analyse recording.");
+        const errorData = await response.json().catch(() => null);
+
+        throw new Error(
+            errorData?.details ||
+                errorData?.error ||
+                "Failed to analyse recording."
+        );
       }
 
       const data = await response.json();
@@ -98,7 +104,11 @@ export default function AudioRecorder({
       onFeedback(data.feedback);
     } catch (err) {
       console.error(err);
-      setError("Something went wrong while analysing your recording.");
+      setError(
+        err instanceof Error
+            ? err.message
+            : "Something went wrong while analysing your recording."
+      );
     } finally {
       onLoadingChange?.(false);
     }
