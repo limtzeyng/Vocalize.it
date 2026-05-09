@@ -38,7 +38,7 @@ npm run dev```
 
 ### 3. Environment (.env file)
 # Google AI
-GEMINI_API_KEY=AIzaSyDAxQefCZGhWcirJzvIlH0fHhBESEmhdxs
+GEMINI_API_KEY=AIzaSyBplq0E8fWag8NvwAw9u6xvSMp0HyA0F1E
 
 # Firebase Configuration
 NEXT_PUBLIC_FIREBASE_API_KEY=AIzaSyC_1bNOsPFkSNqma6vSs38Ooc427SYjiLY
